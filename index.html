@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>학교 시간표 생성기</title>
+    <style>
+        body { 
+            font-family: "맑은 고딕", sans-serif; 
+            background: #f8f9fa; 
+            padding: 40px; 
+            text-align: center; 
+        }
+        #input-section { max-width: 700px; margin: 0 auto 30px; text-align: left; }
+        label { display: block; margin: 12px 0 4px; font-weight: bold; }
+        input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        button { 
+            padding: 12px 30px; 
+            background: #1976d2; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 20px 10px; 
+        }
+        button:hover { background: #1565c0; }
+        #preview { margin-top: 40px; }
+        table { 
+            border-collapse: collapse; 
+            margin: 0 auto; 
+            background: white; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            border-radius: 10px; 
+            overflow: hidden; 
+            width: 100%; 
+            max-width: 850px; 
+        }
+        th, td { 
+            border: none; 
+            text-align: center; 
+            font-size: 15px; 
+            height: 65px; 
+            vertical-align: middle; 
+        }
+        th { 
+            background: #e3f2fd; 
+            color: #1565c0; 
+            font-weight: bold; 
+            width: 70px; 
+        }
+        td { 
+            width: 160px; 
+        }
+        .name-cell { 
+            font-weight: bold; 
+            font-size: 17px; 
+            color: #333; 
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<h1>학교 시간표 만들기</h1>
+
+<div id="input-section">
+    <label>이름:</label>
+    <input type="text" id="name" placeholder="예: 김현수" value="김현수">
+
+    <h3>과목 입력</h3>
+    <div id="inputs"></div>
+
+    <button onclick="createTimetable()">시간표 생성 & 미리보기</button>
+</div>
+
+<div id="preview"></div>
+
+<script>
+// 색상 매핑
+const colorToHex = {
+    '코랄레드': '#ff6b6b',
+    '피치오렌지': '#ffaa85',
+    '레몬옐로우': '#ffe66d',
+    '민트그린': '#77dd77',
+    '소프트스카이': '#81d4fa',
+    '인디고네이비': '#5c6bc0',
+    '라벤더퍼플': '#c7a8f5',
+    '라이트민트': '#b2f2bb',
+    '베이비블루': '#bbdefb',
+    '흰색': 'white'
+};
+
+const grid = [
+    ['코랄레드',   '흰색',      '인디고네이비', '피치오렌지',  '코랄레드'],
+    ['라이트민트', '코랄레드',   '흰색',       '인디고네이비', '민트그린'],
+    ['레몬옐로우', '피치오렌지', '라벤더퍼플',  '라이트민트',  '라이트민트'],
+    ['베이비블루', '레몬옐로우', '민트그린',   '베이비블루',  '라벤더퍼플'],
+    ['소프트스카이','인디고네이비','소프트스카이','흰색',      '베이비블루'],
+    ['피치오렌지', '소프트스카이','레몬옐로우', '라벤더퍼플',  '흰색'],
+    ['민트그린',   '흰색',      '흰색',       '흰색',        '흰색']
+];
+
+const days = ['월', '화', '수', '목', '금'];
+const periods = [1,2,3,4,5,6,7];
+
+// 입력 필드 생성 순서 조정: 월요일 2교시 아래로 화요일 2교시(흰색 연동) 배치
+const inputsContainer = document.getElementById('inputs');
+const inputMap = {};
+const processed = new Set();
+
+// 색상 있는 칸들 입력 (대표 위치로 라벨 표시)
+for (let p = 0; p < 7; p++) {
+    for (let d = 0; d < 5; d++) {
+        const color = grid[p][d];
+        if (color === '흰색') continue;
+        if (processed.has(color)) continue;
+        processed.add(color);
+
+        const key = color;
+        const labelText = `${days[d]}요일 ${periods[p]}교시`;
+
+        const label = document.createElement('label');
+        label.textContent = labelText + ':';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = '과목 이름 (빈 칸 가능)';
+        inputMap[key] = input;
+
+        inputsContainer.appendChild(label);
+        inputsContainer.appendChild(input);
+    }
+}
+
+// 흰색 칸 전체 연동 입력 (라벨을 화요일 2교시로, 다른 입력칸과 동일하게)
+const whiteKey = 'white_all';
+const whiteLabel = document.createElement('label');
+whiteLabel.textContent = '화요일 2교시:';
+const whiteInput = document.createElement('input');
+whiteInput.type = 'text';
+whiteInput.placeholder = '과목 이름 (빈 칸 가능)';
+inputMap[whiteKey] = whiteInput;
+
+inputsContainer.appendChild(whiteLabel);
+inputsContainer.appendChild(whiteInput);
+
+// 시간표 생성
+function createTimetable() {
+    const name = document.getElementById('name').value.trim() || '김현수';
+    const values = {};
+
+    for (const key in inputMap) {
+        values[key] = inputMap[key].value.trim();
+    }
+
+    let html = `<h2>${name}의 시간표</h2>
+                <table id="timetable">
+                    <tr><th></th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th></tr>`;
+
+    for (let p = 0; p < 7; p++) {
+        html += `<tr><th>${periods[p]}교시</th>`;
+        for (let d = 0; d < 5; d++) {
+            const color = grid[p][d];
+            let content = '';
+            let bg = colorToHex[color] || 'white';
+
+            if (p === 6 && d === 4) {
+                content = `<span class="name-cell">${name}</span>`;
+                bg = 'white';
+            } else if (color === '흰색') {
+                if ((p === 6 && (d === 1 || d === 2 || d === 3)) ||  // 화·수·목 7교시
+                    (p === 5 && d === 4)) {                         // 금 6교시
+                    content = '';
+                } else {
+                    content = values[whiteKey] || '';
+                }
+            } else {
+                content = values[color] || '';
+            }
+
+            html += `<td style="background-color:${bg};">${content}</td>`;
+        }
+        html += '</tr>';
+    }
+
+    html += '</table>';
+    html += '<button onclick="saveAsPng()">PNG로 저장 (시간표만)</button>';
+
+    document.getElementById('preview').innerHTML = html;
+}
+
+// PNG 저장
+function saveAsPng() {
+    const table = document.getElementById('timetable');
+    html2canvas(table, {
+        backgroundColor: null,
+        scale: 2
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = '시간표.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }).catch(err => {
+        alert('다운로드 실패: ' + err.message + '\n로컬 서버(http://)로 열어보세요.');
+    });
+}
+</script>
+
+</body>
+</html>
