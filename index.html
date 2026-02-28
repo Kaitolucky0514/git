@@ -147,7 +147,7 @@ for (let p = 0; p < 7; p++) {
         label.textContent = labelText + ':';
         const input = document.createElement('input');
         input.type = 'text';
-        input.placeholder = '과목 이름 (빈 칸 가능)';
+        input.placeholder = '과목 이름 (이동 반 숫자)';
         inputMap[key] = input;
 
         inputsContainer.appendChild(label);
@@ -155,13 +155,13 @@ for (let p = 0; p < 7; p++) {
     }
 }
 
-// 흰색 칸 전체 연동 입력 (화요일 2교시 라벨)
+// 흰색 칸 전체 연동 입력 (화요일 1교시 라벨)
 const whiteKey = 'white_all';
 const whiteLabel = document.createElement('label');
-whiteLabel.textContent = '화요일 2교시:';
+whiteLabel.textContent = '화요일 1교시:';
 const whiteInput = document.createElement('input');
 whiteInput.type = 'text';
-whiteInput.placeholder = '과목 이름 (빈 칸 가능)';
+whiteInput.placeholder = '과목 이름 (이동 반 숫자)';
 inputMap[whiteKey] = whiteInput;
 
 inputsContainer.appendChild(whiteLabel);
